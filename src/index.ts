@@ -169,7 +169,10 @@ export class ReveAI {
       finalPrompt = enhancedPrompt;
     }
 
-    const generationId = crypto.randomUUID ? crypto.randomUUID() : `gen-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+   const generationId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+     ? crypto.randomUUID() 
+     : `gen-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
 
     const generationPayload = {
       data: {
