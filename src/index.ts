@@ -148,12 +148,13 @@ export class ReveAI {
   }
 
   private async enhancePrompt(prompt: string, numVariants: number = 4): Promise<string[]> {
-    try {
-      const payload = {
-        inputs: { num_variants: numVariants, prompt: prompt },
-        model_id: "promptenhancer_v1/prod/20250224-0952",
-        project_id: await this.getProjectId()
-      };
+    // The prompt enhancer API was deprecated by Reve AI.
+    // We safely bypass this to prevent 404 errors and crashes.
+    if (this.options.verbose) {
+      console.log(`Skipping prompt enhancement (API deprecated). Using original prompt.`);
+    }
+    return [prompt];
+  }
 
       const response = await this.apiClient.post('/api/misc/model_infer_sync', payload);
 
@@ -199,15 +200,10 @@ export class ReveAI {
 
     const generationId = crypto.randomUUID ? crypto.randomUUID() : `gen-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
-    // UPDATE: Inference schema adjustments (uses `prompt` instead of `caption`)
+// Format the payload exactly as the new API expects (client_metadata must be null)
     const generationPayload = {
       data: {
-        client_metadata: {
-          aspectRatio: `${width}:${height}`,
-          instruction: prompt,
-          optimizeEnabled: shouldEnhancePrompt,
-          unexpandedPrompt: prompt
-        },
+        client_metadata: null,
         inference_inputs: {
           prompt: finalPrompt, 
           height: height,
