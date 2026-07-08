@@ -169,14 +169,23 @@ export class ReveAI {
       finalPrompt = enhancedPrompt;
     }
 
-   const generationId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
-     ? crypto.randomUUID() 
-     : `gen-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-
+    // Generate a strictly valid UUIDv4 for the API
+    const generateUUID = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+    
+    const generationId = generateUUID();
 
     const generationPayload = {
       data: {
         client_metadata: null,
+        has_user_upload_in_lineage: false, // Explicitly required by the new API
         inference_inputs: {
           prompt: finalPrompt, 
           height: height,
