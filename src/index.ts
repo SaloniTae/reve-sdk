@@ -183,9 +183,10 @@ export class ReveAI {
     const generationId = generateUUID();
 
     const generationPayload = {
+      type: "generation", // <--- Added: Tells the master node endpoint what we are creating
       data: {
         client_metadata: null,
-        has_user_upload_in_lineage: false, // Explicitly required by the new API
+        has_user_upload_in_lineage: false,
         inference_inputs: {
           prompt: finalPrompt, 
           height: height,
@@ -202,8 +203,9 @@ export class ReveAI {
       }
     };
 
+    // Changed to /node endpoint instead of /generation
     const generationResponse = await this.apiClient.post(
-      `/api/project/${projectId}/generation`,
+      `/api/project/${projectId}/node`,
       generationPayload
     );
 
@@ -211,19 +213,14 @@ export class ReveAI {
       return { imageUrl: 'https://example.com/test-image.jpg', seed: -1 };
     }
 
-    let generationIdFromResponse = null;
-    if (generationResponse.data.create && generationResponse.data.create.node && generationResponse.data.create.node.id) {
+    // Simplified ID resolution that falls back to our locally generated UUID
+    let generationIdFromResponse = generationId;
+    if (generationResponse.data?.create?.node?.id) {
       generationIdFromResponse = generationResponse.data.create.node.id;
-    } else if (generationResponse.data.generation_id) {
-      generationIdFromResponse = generationResponse.data.generation_id;
+    } else if (generationResponse.data?.node?.id) {
+      generationIdFromResponse = generationResponse.data.node.id;
     }
     
-    if (!generationIdFromResponse) {
-      throw new ReveAIError(
-        'Failed to get generation ID from response: ' + JSON.stringify(generationResponse.data),
-        ReveAIErrorType.UNEXPECTED_RESPONSE
-      );
-    }
 
     const result = await this.pollGenerationStatus(projectId, generationIdFromResponse);
     
