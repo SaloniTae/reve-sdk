@@ -1,5 +1,3 @@
-// src/index.ts
-
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import {
@@ -42,9 +40,8 @@ export class ReveAI {
     this.options = {
       auth: options.auth,
       projectId: options.projectId || undefined,
-      // UPDATE: Base URL is now app.reve.com
       baseUrl: options.baseUrl ?? 'https://app.reve.com',
-      timeout: options.timeout ?? 30000,
+      timeout: options.timeout ?? 60000,
       maxPollingAttempts: options.maxPollingAttempts ?? 60,
       pollingInterval: options.pollingInterval ?? 2000,
       verbose: options.verbose ?? false,
@@ -58,7 +55,6 @@ export class ReveAI {
         'content-type': 'application/json',
         'accept': '*/*',
         'accept-language': 'en-US,en;q=0.9',
-        // UPDATE: Changed Origin and Referer
         'origin': 'https://app.reve.com',
         'referer': 'https://app.reve.com/',
         'dnt': '1',
@@ -87,7 +83,6 @@ export class ReveAI {
       }
     });
 
-    // Logging Interceptors
     this.apiClient.interceptors.request.use(
       (config) => {
         if (this.options.verbose) {
@@ -118,16 +113,13 @@ export class ReveAI {
       }
     );
 
-    // Auth injection
     this.apiClient.interceptors.request.use(
       (config) => {
         config.headers.authorization = this.options.auth.authorization;
         config.headers.cookie = this.options.auth.cookie;
-        
         Object.entries(this.options.customHeaders).forEach(([key, value]) => {
           config.headers[key] = value;
         });
-        
         return config;
       },
       (error) => Promise.reject(error)
@@ -147,27 +139,12 @@ export class ReveAI {
     }
   }
 
+  // Bypass deprecated enhancer safely
   private async enhancePrompt(prompt: string, numVariants: number = 4): Promise<string[]> {
-    // The prompt enhancer API was deprecated by Reve AI.
-    // We safely bypass this to prevent 404 errors and crashes.
     if (this.options.verbose) {
       console.log(`Skipping prompt enhancement (API deprecated). Using original prompt.`);
     }
     return [prompt];
-  }
-
-      const response = await this.apiClient.post('/api/misc/model_infer_sync', payload);
-
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        const lastResponse = response.data[response.data.length - 1];
-        if (lastResponse.status === 'success' && lastResponse.outputs?.expanded_prompts) {
-          return lastResponse.outputs.expanded_prompts;
-        }
-      }
-      return [prompt];
-    } catch (error) {
-      return [prompt];
-    }
   }
 
   private async generateSingleImage(
@@ -183,7 +160,6 @@ export class ReveAI {
     const width = options.width || 1024;
     const height = options.height || 1024;
     const seed = options.seed === undefined ? -1 : options.seed;
-    // UPDATE: Default inference model is now 'unified-v1'
     const model = options.model || 'unified-v1/prod/20260702-182131'; 
     const shouldEnhancePrompt = options.enhancePrompt ?? true;
 
@@ -191,16 +167,10 @@ export class ReveAI {
     
     if (enhancedPrompt && shouldEnhancePrompt) {
       finalPrompt = enhancedPrompt;
-    } else if (shouldEnhancePrompt) {
-      const enhancedPrompts = await this.enhancePrompt(prompt, 1);
-      if (enhancedPrompts.length > 0) {
-        finalPrompt = enhancedPrompts[0];
-      }
     }
 
     const generationId = crypto.randomUUID ? crypto.randomUUID() : `gen-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
-// Format the payload exactly as the new API expects (client_metadata must be null)
     const generationPayload = {
       data: {
         client_metadata: null,
@@ -313,7 +283,6 @@ export class ReveAI {
     
     while (attempts < this.options.maxPollingAttempts) {
       try {
-        // UPDATE: Fetch generation history endpoint instead of /node
         const nodeResponse = await this.apiClient.get(`/api/project/${projectId}/generation?count=50`);
         
         if (nodeResponse.data && nodeResponse.data.list && Array.isArray(nodeResponse.data.list)) {
@@ -327,7 +296,6 @@ export class ReveAI {
               const seed = ourGeneration.data.inference_inputs?.seed || -1;
               
               try {
-                // UPDATE: The image fetching URL structure has changed (requires /filename at the end)
                 const imageResponse = await this.apiClient.get(
                   `/api/project/${projectId}/image/${imageId}/url/filename/${imageId}`, 
                   { 
